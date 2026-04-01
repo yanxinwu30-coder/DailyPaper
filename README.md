@@ -2,13 +2,22 @@
 
 这是一个基于 `GitHub Actions` 的全自动化科研追踪工具。它利用 Semantic Scholar 的推荐 API，根据你设定的“种子论文”自动找到最新相关的研究工作，并利用大语言模型（如 DeepSeek）生成中文深度总结，最后每天准时将内容推送到你的微信上。
 
+广告：使用我的硅基流动链接注册并实名认证可以获得16元人民币的任意AI模型 （包括DeepSeek） 试用额度！[[点击注册](https://cloud.siliconflow.cn/i/5eXyqjuv)](https://cloud.siliconflow.cn/i/5eXyqjuv)。也可以在vscode、cursor、notion等工具中使用。
+
+---
+
+## 更新日志
+
+- **2026-03-31**：完成核心功能开发和测试，公开仓库。
+- **2026-04-01**：增加出版商黑名单功能。
+
 ## 🌟 功能特性
 
 - **高度贴合**：通过配置“正向(Positive)”和“负向(Negative)”种子论文，让推荐算法越来越懂你的研究偏好。
+- **过滤不感兴趣的出版商**：内置出版商黑名单功能，自动屏蔽来自特定会议或期刊（`config/publisher_blacklist.txt`）的论文，专注于你真正关心的研究。
 - **AI 智能读库**：对晦涩的英文摘要进行精读总结，自动提取3大核心要点（创新、方法、解决的问题），用通俗易懂的中文呈现。
 - **仅推最新**：每次从海量推荐中智能筛选出 top 10 最新论文，按发表日期倒序排列。
 - **防止重复**：自动维护推送历史记录（`config/seen_papers.txt`），杜绝重复推送同一篇论文，不浪费你的微信通知。
-- **更稳定的元数据**：优先使用 `venue` 展示会议/期刊信息，优先使用 DOI 生成跳转链接（回退到原始 URL）。
 - **两步抓取 TLDR**：首轮筛选最新且含摘要的推荐论文，随后利用 Batch API 精准回补 TLDR（一句话极简总结），丰富 AI 的分析上下文。
 - **免服务器部署**：完全依托于 GitHub Actions 运行，零开销、零维护。
 - **微信准时送达**：结合 Server 酱，把你每天需要在各个平台刷论文的时间省下来，早晨直接在微信查收日报。
@@ -28,11 +37,11 @@
 你需要提前准备好以下三个服务的 API 密钥：
 
 1. **Semantic Scholar API Key (S2_API_KEY)**
-   - 官方虽然有无 Key 调用的额度，但为了保证推荐 API 稳定运行，建议去 [Semantic Scholar API](https://www.semanticscholar.org/product/api) 申请专属 Key。用教育邮箱申请后，大概10分钟就能拿到。
+   - 官方虽然有无 Key 调用的额度，但为了保证推荐 API 稳定运行，建议去 [Semantic Scholar API](https://www.semanticscholar.org/product/api) 拉到最下面的表格，申请专属 Key。用教育邮箱申请后，大概10分钟就能拿到。
 2. **LLM API Key (LLM_API_KEY)**
-   - 代码默认接入的是性价比极高的 **DeepSeek**。你可以去 [DeepSeek 开放平台](https://platform.deepseek.com/) 注册并生成一个 API 密钥。*(如果你想使用 OpenAI，只需在 `paper_tracker.py` 中去掉 `base_url` 并换成对应服务的 Key 即可)*。实测一次推送大概要0.02元人民币，如果不需要AI自动总结，可以关闭这个功能。
+   - 代码默认接入的是性价比极高的 **DeepSeek**。你可以去 [DeepSeek 开放平台](https://platform.deepseek.com/) 注册并生成一个 API 密钥。*(如果你想使用其他平台，只需在 `paper_tracker.py` 中更改 `base_url` 并换成对应服务的 Key 即可)*。实测一次推送大概要0.02元人民币，如果不需要AI自动总结，可以关闭这个功能。
 3. **Server酱 SendKey (SERVERCHAN_KEY)**
-   - 用于微信推送。访问 [Server酱官网](https://sct.ftqq.com/) 用你的微信扫码登录，获取你的 `SendKey`，并配置好微信推送通道。
+   - 用于微信推送。访问 [Server酱官网](https://sct.ftqq.com/login) 用你的微信扫码登录，获取你的 `SendKey`，并配置好微信推送通道。
 
 ### 3. 配置 GitHub Secrets
 
@@ -53,6 +62,15 @@
 - **`config/seed_paper_negative.csv`** (可选)：放入你觉得**不相关、不希望系统推荐**的论文 ID（每行一个）。
 
 > **💡 提示**：系统会自动创建和维护 `config/seen_papers.txt` 文件来记录已推送过的论文，防止重复推送。你无需手动操作。
+
+### 5. 设置出版商黑名单（可选）
+
+修改 `config/publisher_blacklist.txt` 文件，添加你不想接收论文的出版商名称（每行一个）。请使用论文推荐 API 返回的 `venue` 字段中的名称（大小写不敏感），例如：
+
+```
+arXiv
+bioRxiv
+```
 
 #### 支持的论文 ID 格式
 
@@ -82,7 +100,7 @@
 4. 点击右侧的 `Run workflow` -> `Run workflow`。
 5. 等待 1~2 分钟，如果全部打勾为绿色，你的微信就会收到第一封文献晨报！
 
-*(此外，系统每天北京时间早上 8:00 会自动运行一次，日常也会在你推送 `master` 分支时运行)*。
+*(此外，系统每天北京时间早上 9:00 会自动运行一次，同时允许手动触发)*。
 
 ---
 
@@ -111,7 +129,7 @@
 
 这个仓库基本通过 vibe coding 实现。欢迎根据自己的需求进行修改和优化：
 
-- **更改运行时间**：编辑 `.github/workflows/daily_tracker.yml` 文件中的 `cron: '0 0 * * *'` (注意这是 UTC 时间)。
+- **更改运行时间**：编辑 `.github/workflows/daily_tracker.yml` 文件中的 `cron: '0 1 * * *'` (注意这是 UTC 时间)。
 - **更改 AI 提示词**：直接修改 `paper_tracker.py` 中的 `prompt` 字段，以生成符合你排版和侧重点的报告。 
 - **替换其他的大模型**：如果你想用诸如 Kimi、通义千问等，只要它们兼容 OpenAI SDK 格式，直接在 `paper_tracker.py` 修改 `base_url` 即可。
 

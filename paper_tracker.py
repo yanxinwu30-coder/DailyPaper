@@ -8,6 +8,8 @@ LLM_API_KEY = os.getenv("LLM_API_KEY")
 SERVERCHAN_KEY = os.getenv("SERVERCHAN_KEY")
 
 HISTORY_FILE = "config/seen_papers.txt"
+BLACKLIST_FILE = "config/blacklisted_venues.txt"
+MAX_PAPERS_AQUIRED_FROM_S2 = 100
 
 
 def read_list(file_path):
@@ -55,7 +57,7 @@ def get_paper_recommendations():
     # 步骤 1：获取推荐（注意：这里去掉了 tldr，防止 400 报错）
     params = {
         "fields": "paperId,title,abstract,authors,url,venue,externalIds,publicationDate,year",
-        "limit": 50,
+        "limit": MAX_PAPERS_AQUIRED_FROM_S2,
     }
 
     response = requests.post(url, json=payload, headers=headers, params=params)
@@ -66,11 +68,18 @@ def get_paper_recommendations():
 
     raw_papers = response.json().get("recommendedPapers", [])
     seen_papers = set(read_list(HISTORY_FILE))
+    blacklisted_venues = [v.lower() for v in read_list(BLACKLIST_FILE)]
+
+    print(f"从推荐系统获取到 {len(raw_papers)} 篇论文，正在筛选最新论文...")
 
     # 过滤掉已经推送过的论文
     unseen_papers = []
     for p in raw_papers:
         if p.get("paperId") in seen_papers:
+            continue
+
+        venue = (p.get("venue") or "").lower()
+        if blacklisted_venues and any(bv in venue for bv in blacklisted_venues):
             continue
 
         abstract_text = (p.get("abstract") or "").strip()
@@ -92,6 +101,8 @@ def get_paper_recommendations():
         return "1900-01-01"
 
     unseen_papers.sort(key=get_date, reverse=True)
+
+    print(f"筛选后剩余 {len(unseen_papers)} 篇未读论文，正在获取 TLDR...")
 
     # 只取前 10 篇最新的
     top_new_papers = unseen_papers[:10]
